@@ -1,0 +1,40 @@
+name: noteyou
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.10.7 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI Icons
+  cupertino_icons: ^1.0.8
+  iconsax: ^0.0.8
+
+  # State Management
+  flutter_riverpod: ^2.6.1  # Corrected from 3.2.1 (Safe stable version)
+
+  # Fonts & Styling
+  google_fonts: ^6.2.1      # Corrected from 8.0.1 (Safe stable version)
+  flutter_screenutil: ^5.9.3
+
+  # Animations (REQUIRED for Settings Page)
+  animate_do: ^3.3.4
+  record: ^6.2.0
+  path_provider: ^2.1.5
+  permission_handler: ^12.0.1
+  audioplayers: ^6.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Linter
+  flutter_lints: ^4.0.0     # Corrected to latest stable version
+
+flutter:
+  uses-material-design: true
