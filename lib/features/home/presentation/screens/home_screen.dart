@@ -9,6 +9,7 @@ import '../../data/models/study_reminder.dart';
 import '../../data/logic/home_logic.dart';
 import 'subjects_screen.dart';
 import 'study_session_screen.dart';
+import 'subject_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -178,7 +179,46 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSubjectCard(String title, String sub, Color color, IconData icon) {
-    return Container(width: 140.w, margin: EdgeInsets.only(right: 15.w), padding: EdgeInsets.all(15.w), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20.r), border: Border.all(color: Colors.grey.shade100)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(padding: EdgeInsets.all(10.w), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12.r)), child: Icon(icon, color: Colors.white, size: 24.sp)), SizedBox(height: 15.h), Text(title, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)), Text(sub, style: TextStyle(fontSize: 12.sp, color: Colors.grey))]));
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SubjectDetailsScreen(
+              subject: {
+                'name': title,
+                'desc': sub,
+                'color': color,
+                'icon': icon,
+              },
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 140.w,
+        margin: EdgeInsets.only(right: 15.w),
+        padding: EdgeInsets.all(15.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: EdgeInsets.all(10.w),
+              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12.r)),
+              child: Icon(icon, color: Colors.white, size: 24.sp),
+            ),
+            SizedBox(height: 15.h),
+            Text(title, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+            Text(sub, style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildSectionHeader(String title, String action, VoidCallback onTap) {
