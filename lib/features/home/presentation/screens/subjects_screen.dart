@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:iconsax/iconsax.dart';
+import '../../../../main.dart';
 import 'subject_details_screen.dart'; // Import the new file
 
-class SubjectsScreen extends StatefulWidget {
+class SubjectsScreen extends ConsumerStatefulWidget {
   const SubjectsScreen({super.key});
 
   @override
-  State<SubjectsScreen> createState() => _SubjectsScreenState();
+  ConsumerState<SubjectsScreen> createState() => _SubjectsScreenState();
 }
 
-class _SubjectsScreenState extends State<SubjectsScreen> {
+class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
   // 1. DYNAMIC DATA
   List<Map<String, dynamic>> subjects = [
     {"name": "Mathematics", "count": "3", "desc": "Algebra, Calculus", "color": const Color(0xFF4A90E2), "icon": Icons.functions},
@@ -96,14 +98,14 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
-        title: const Text("My Subjects", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        title: Text("My Subjects", style: TextStyle(fontWeight: FontWeight.bold)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+          icon: const Icon(Icons.arrow_back_ios_new),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -132,9 +134,9 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                 margin: EdgeInsets.only(bottom: 15.h),
                 padding: EdgeInsets.all(15.w),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
                   borderRadius: BorderRadius.circular(15.r),
-                  border: Border.all(color: Colors.grey.shade200),
+                  border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200),
                 ),
                 child: ListTile(
                   leading: CircleAvatar(backgroundColor: s['color'].withOpacity(0.1), child: Icon(s['icon'], color: s['color'])),

@@ -1,24 +1,26 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 
 // IMPORTS
+import '../../../../main.dart';
 import '../../data/models/study_reminder.dart';
 import '../../data/logic/home_logic.dart';
 import 'subjects_screen.dart';
 import 'study_session_screen.dart';
 import 'subject_details_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Logic Controller
   final HomeLogic _logic = HomeLogic();
 
@@ -68,11 +70,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
     StudyReminder? upcoming = _reminders.isNotEmpty ? _reminders.first : null;
     String daysLeft = upcoming != null ? upcoming.date.difference(DateTime.now()).inDays.toString() : "0";
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -82,11 +86,11 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 1. Header
-                _buildHeader(),
+                _buildHeader(isDarkMode),
                 SizedBox(height: 25.h),
 
                 // 2. Greeting
-                Text(_greeting, style: GoogleFonts.poppins(fontSize: 26.sp, fontWeight: FontWeight.bold, color: Colors.black)),
+                Text(_greeting, style: GoogleFonts.poppins(fontSize: 26.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black)),
                 Text("Lecture notes", style: GoogleFonts.poppins(fontSize: 14.sp, color: Colors.grey[500])),
                 SizedBox(height: 25.h),
 
@@ -100,9 +104,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(children: [
-                    _buildSubjectCard("Mathematics", "12 lectures", const Color(0xFF4A90E2), Icons.functions),
-                    _buildSubjectCard("Physics", "8 lectures", const Color(0xFF9B51E0), Icons.science),
-                    _buildSubjectCard("Literature", "15 lectures", const Color(0xFF27AE60), Icons.menu_book),
+                    _buildSubjectCard("Mathematics", "12 lectures", const Color(0xFF4A90E2), Icons.functions, isDarkMode),
+                    _buildSubjectCard("Physics", "8 lectures", const Color(0xFF9B51E0), Icons.science, isDarkMode),
+                    _buildSubjectCard("Literature", "15 lectures", const Color(0xFF27AE60), Icons.menu_book, isDarkMode),
                   ]),
                 ),
                 SizedBox(height: 30.h),
@@ -110,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // 5. Recent Recordings
                 Text("Recent Lectures", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
                 SizedBox(height: 15.h),
-                _buildRecordingsList(),
+                _buildRecordingsList(isDarkMode),
               ],
             ),
           ),
@@ -121,14 +125,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- UI WIDGETS ---
 
-  Widget _buildHeader() {
+  Widget _buildHeader(bool isDarkMode) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(children: [
           CircleAvatar(radius: 18.r, backgroundColor: const Color(0xFF3F6DFC), child: Icon(Iconsax.microphone_2, color: Colors.white, size: 18.sp)),
           SizedBox(width: 8.w),
-          Text("NoteYou", style: GoogleFonts.poppins(fontSize: 20.sp, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
+          Text("NoteYou", style: GoogleFonts.poppins(fontSize: 20.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : const Color(0xFF0F172A))),
         ]),
         Row(children: [Icon(Iconsax.search_normal, size: 24.sp), SizedBox(width: 15.w), Icon(Iconsax.notification, size: 24.sp)]),
       ],
@@ -157,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRecordingsList() {
+  Widget _buildRecordingsList(bool isDarkMode) {
     if (_recordings.isEmpty) return const Center(child: Text("No recordings found.", style: TextStyle(color: Colors.grey)));
     return ListView.builder(
       shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: _recordings.length,
@@ -166,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final isPlaying = _playingPath == file.path;
         return Container(
           margin: EdgeInsets.only(bottom: 10.h),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15.r), border: Border.all(color: Colors.grey.shade100)),
+          decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(15.r), border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100)),
           child: ListTile(
             leading: CircleAvatar(backgroundColor: isPlaying ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1), child: Icon(isPlaying ? Icons.pause : Iconsax.microphone, color: isPlaying ? Colors.red : const Color(0xFF3F6DFC), size: 20.sp)),
             title: Text("Recording ${index + 1}", style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold)),
@@ -178,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSubjectCard(String title, String sub, Color color, IconData icon) {
+  Widget _buildSubjectCard(String title, String sub, Color color, IconData icon, bool isDarkMode) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -200,9 +204,9 @@ class _HomeScreenState extends State<HomeScreen> {
         margin: EdgeInsets.only(right: 15.w),
         padding: EdgeInsets.all(15.w),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(color: Colors.grey.shade100),
+          border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
