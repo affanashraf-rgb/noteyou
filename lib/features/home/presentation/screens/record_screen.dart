@@ -1,21 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:audioplayers/audioplayers.dart'; // IMPORTED THIS
+import 'package:audioplayers/audioplayers.dart';
 import 'dart:io';
+import '../../../../main.dart';
 
-class RecordScreen extends StatefulWidget {
+class RecordScreen extends ConsumerStatefulWidget {
   const RecordScreen({super.key});
 
   @override
-  State<RecordScreen> createState() => _RecordScreenState();
+  ConsumerState<RecordScreen> createState() => _RecordScreenState();
 }
 
-class _RecordScreenState extends State<RecordScreen> {
+class _RecordScreenState extends ConsumerState<RecordScreen> {
   // --- RECORDING VARIABLES ---
   late final AudioRecorder _audioRecorder;
   bool _isRecording = false;
@@ -64,7 +65,6 @@ class _RecordScreenState extends State<RecordScreen> {
           _isRecording = true;
           _recordDuration = 0;
           _audioPath = filePath;
-          // Reset playback state
           _isPlaying = false;
           _isPaused = false;
         });
@@ -74,7 +74,7 @@ class _RecordScreenState extends State<RecordScreen> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Microphone permission required!")));
       }
     } catch (e) {
-      print("Error starting record: $e");
+      debugPrint("Error starting record: $e");
     }
   }
 
@@ -96,7 +96,7 @@ class _RecordScreenState extends State<RecordScreen> {
         ),
       );
     } catch (e) {
-      print("Error stopping record: $e");
+      debugPrint("Error stopping record: $e");
     }
   }
 
@@ -112,7 +112,7 @@ class _RecordScreenState extends State<RecordScreen> {
         });
       }
     } catch (e) {
-      print("Error playing audio: $e");
+      debugPrint("Error playing audio: $e");
     }
   }
 
@@ -124,7 +124,7 @@ class _RecordScreenState extends State<RecordScreen> {
         _isPaused = true;
       });
     } catch (e) {
-      print("Error pausing audio: $e");
+      debugPrint("Error pausing audio: $e");
     }
   }
 
@@ -147,8 +147,11 @@ class _RecordScreenState extends State<RecordScreen> {
   // --- UI BUILD ---
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -156,7 +159,6 @@ class _RecordScreenState extends State<RecordScreen> {
             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
             child: Column(
               children: [
-
                 // 1. MAIN HEADER
                 Row(
                   children: [
@@ -168,12 +170,16 @@ class _RecordScreenState extends State<RecordScreen> {
                     SizedBox(width: 10.w),
                     Text(
                       "NoteYou",
-                      style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
+                      style: TextStyle(
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
+                      ),
                     ),
                     const Spacer(),
-                    Icon(Iconsax.search_normal, size: 24.sp, color: Colors.grey[600]),
+                    Icon(Iconsax.search_normal, size: 24.sp, color: isDarkMode ? Colors.white70 : Colors.grey[600]),
                     SizedBox(width: 15.w),
-                    Icon(Iconsax.notification, size: 24.sp, color: Colors.grey[600]),
+                    Icon(Iconsax.notification, size: 24.sp, color: isDarkMode ? Colors.white70 : Colors.grey[600]),
                   ],
                 ),
                 SizedBox(height: 25.h),
@@ -185,16 +191,22 @@ class _RecordScreenState extends State<RecordScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Algebra Basics", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.black87)),
+                        Text(
+                          "Algebra Basics",
+                          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87),
+                        ),
                         Row(
                           children: [
-                            Text("Mathematics", style: TextStyle(fontSize: 12.sp, color: Colors.grey[600])),
-                            Icon(Icons.keyboard_arrow_down, size: 16.sp, color: Colors.grey[600]),
+                            Text(
+                              "Mathematics",
+                              style: TextStyle(fontSize: 12.sp, color: isDarkMode ? Colors.white70 : Colors.grey[600]),
+                            ),
+                            Icon(Icons.keyboard_arrow_down, size: 16.sp, color: isDarkMode ? Colors.white70 : Colors.grey[600]),
                           ],
                         ),
                       ],
                     ),
-                    Icon(Icons.more_horiz, size: 24.sp, color: Colors.black87),
+                    Icon(Icons.more_horiz, size: 24.sp, color: isDarkMode ? Colors.white : Colors.black87),
                   ],
                 ),
                 SizedBox(height: 20.h),
@@ -204,7 +216,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   width: double.infinity,
                   padding: EdgeInsets.symmetric(vertical: 30.h, horizontal: 20.w),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
                     borderRadius: BorderRadius.circular(25.r),
                     boxShadow: [
                       BoxShadow(
@@ -222,16 +234,15 @@ class _RecordScreenState extends State<RecordScreen> {
                         height: 80.w,
                         width: 80.w,
                         decoration: BoxDecoration(
-                          color: _isRecording ? Colors.red.withOpacity(0.1) : const Color(0xFFF2F4F7),
+                          color: _isRecording ? Colors.red.withOpacity(0.1) : (isDarkMode ? const Color(0xFF2C2C2C) : const Color(0xFFF2F4F7)),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                             _isRecording ? Icons.stop_rounded : Iconsax.microphone,
                             size: 32.sp,
-                            color: _isRecording ? Colors.red : Colors.grey[600]
+                            color: _isRecording ? Colors.red : (isDarkMode ? Colors.white70 : Colors.grey[600])
                         ),
                       ),
-
                       SizedBox(height: 20.h),
 
                       // Live Timer
@@ -240,7 +251,7 @@ class _RecordScreenState extends State<RecordScreen> {
                         style: TextStyle(
                           fontSize: 32.sp,
                           fontWeight: FontWeight.bold,
-                          color: _isRecording ? Colors.red : Colors.black87,
+                          color: _isRecording ? Colors.red : (isDarkMode ? Colors.white : Colors.black87),
                           letterSpacing: 2,
                         ),
                       ),
@@ -248,14 +259,13 @@ class _RecordScreenState extends State<RecordScreen> {
 
                       // Status Text or Playback Controls
                       if (!_isRecording && _audioPath != null)
-                      // Show Playback Controls if recorded
                         Container(
                           margin: EdgeInsets.symmetric(vertical: 10.h),
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
+                            color: isDarkMode ? const Color(0xFF2C2C2C) : Colors.grey.shade50,
                             borderRadius: BorderRadius.circular(30.r),
-                            border: Border.all(color: Colors.grey.shade200),
+                            border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -274,14 +284,13 @@ class _RecordScreenState extends State<RecordScreen> {
                                 style: TextStyle(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                                  color: isDarkMode ? Colors.white : Colors.black87,
                                 ),
                               ),
                             ],
                           ),
                         )
                       else
-                      // Show normal text
                         Text(
                           _isRecording ? "RECORDING..." : "READY TO START",
                           style: TextStyle(
@@ -291,7 +300,6 @@ class _RecordScreenState extends State<RecordScreen> {
                             letterSpacing: 1,
                           ),
                         ),
-
                       SizedBox(height: 25.h),
 
                       // Start/Stop Button
@@ -321,23 +329,23 @@ class _RecordScreenState extends State<RecordScreen> {
                   ),
                 ),
 
-                // REST OF THE UI (Status, Notes, Share)
+                // REST OF THE UI
                 SizedBox(height: 20.h),
                 Row(
                   children: [
-                    Expanded(child: _buildStatusCard(icon: Iconsax.global, label: "MODE", value: "Offline", iconColor: Colors.green)),
+                    Expanded(child: _buildStatusCard(isDarkMode: isDarkMode, icon: Iconsax.global, label: "MODE", value: "Offline", iconColor: Colors.green)),
                     SizedBox(width: 15.w),
-                    Expanded(child: _buildStatusCard(icon: Iconsax.magic_star, label: "AI STATUS", value: "Standby", iconColor: const Color(0xFF3F6DFC))),
+                    Expanded(child: _buildStatusCard(isDarkMode: isDarkMode, icon: Iconsax.magic_star, label: "AI STATUS", value: "Standby", iconColor: const Color(0xFF3F6DFC))),
                   ],
                 ),
                 SizedBox(height: 25.h),
-                _buildStaticNoteSection(),
+                _buildStaticNoteSection(isDarkMode),
                 SizedBox(height: 25.h),
                 Row(
                   children: [
-                    Expanded(child: _buildActionButton(Iconsax.share, "Share")),
+                    Expanded(child: _buildActionButton(isDarkMode, Iconsax.share, "Share")),
                     SizedBox(width: 15.w),
-                    Expanded(child: _buildActionButton(Iconsax.export_1, "Export")),
+                    Expanded(child: _buildActionButton(isDarkMode, Iconsax.export_1, "Export")),
                   ],
                 ),
                 SizedBox(height: 30.h),
@@ -350,20 +358,20 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   // --- HELPER WIDGETS ---
-  Widget _buildStaticNoteSection() {
+  Widget _buildStaticNoteSection(bool isDarkMode) {
     return Column(
       children: [
         Container(
           height: 50.h,
           padding: EdgeInsets.all(4.w),
-          decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(25.r)),
+          decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.grey.shade200, borderRadius: BorderRadius.circular(25.r)),
           child: Row(
             children: [
               Expanded(
                 child: Container(
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25.r), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)]),
+                  decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF2C2C2C) : Colors.white, borderRadius: BorderRadius.circular(25.r), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)]),
                   alignment: Alignment.center,
-                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Iconsax.document_text, size: 16.sp, color: Colors.black87), SizedBox(width: 8.w), Text("Notes", style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Colors.black87))]),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Iconsax.document_text, size: 16.sp, color: isDarkMode ? Colors.white : Colors.black87), SizedBox(width: 8.w), Text("Notes", style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87))]),
                 ),
               ),
               Expanded(child: Container(alignment: Alignment.center, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Iconsax.cpu, size: 16.sp, color: Colors.grey.shade600), SizedBox(width: 8.w), Text("AI Agent", style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500, color: Colors.grey.shade600))]))),
@@ -374,13 +382,13 @@ class _RecordScreenState extends State<RecordScreen> {
         Container(
           width: double.infinity,
           padding: EdgeInsets.all(20.w),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20.r), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))]),
+          decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(20.r), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))]),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Algebra Variables (س، ش)", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Text("Algebra Variables (س، ش)", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
               SizedBox(height: 15.h),
-              Text("The lecturer explained that Urdu uses specific symbols for variables. Transitioning to English notation involves mapping 'Seen' to 'x'.", style: TextStyle(fontSize: 14.sp, height: 1.5, color: Colors.grey.shade700)),
+              Text("The lecturer explained that Urdu uses specific symbols for variables. Transitioning to English notation involves mapping 'Seen' to 'x'.", style: TextStyle(fontSize: 14.sp, height: 1.5, color: isDarkMode ? Colors.white70 : Colors.grey.shade700)),
               SizedBox(height: 20.h),
               Row(children: [Icon(Icons.check_circle_outline, color: const Color(0xFF3F6DFC), size: 18.sp), SizedBox(width: 8.w), Text("Key concept saved", style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: const Color(0xFF3F6DFC)))]),
             ],
@@ -390,19 +398,19 @@ class _RecordScreenState extends State<RecordScreen> {
     );
   }
 
-  Widget _buildStatusCard({required IconData icon, required String label, required String value, required Color iconColor}) {
+  Widget _buildStatusCard({required bool isDarkMode, required IconData icon, required String label, required String value, required Color iconColor}) {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 15.h, horizontal: 15.w),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15.r), border: Border.all(color: Colors.grey.shade200)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Icon(icon, size: 18.sp, color: iconColor), SizedBox(width: 8.w), Text(label, style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: Colors.grey[400]))]), SizedBox(height: 5.h), Padding(padding: EdgeInsets.only(left: 26.w), child: Text(value, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Colors.black87)))]),
+      decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(15.r), border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Icon(icon, size: 18.sp, color: iconColor), SizedBox(width: 8.w), Text(label, style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: Colors.grey[400]))]), SizedBox(height: 5.h), Padding(padding: EdgeInsets.only(left: 26.w), child: Text(value, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)))]),
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label) {
+  Widget _buildActionButton(bool isDarkMode, IconData icon, String label) {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 15.h),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15.r), border: Border.all(color: Colors.grey.shade200), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5, offset: const Offset(0, 2))]),
-      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 20.sp, color: Colors.black87), SizedBox(width: 10.w), Text(label, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.black87))]),
+      decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(15.r), border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5, offset: const Offset(0, 2))]),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 20.sp, color: isDarkMode ? Colors.white : Colors.black87), SizedBox(width: 10.w), Text(label, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: isDarkMode ? Colors.white : Colors.black87))]),
     );
   }
 }

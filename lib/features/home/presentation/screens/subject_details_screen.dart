@@ -1,21 +1,23 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../../../main.dart';
 
-class SubjectDetailsScreen extends StatefulWidget {
+class SubjectDetailsScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> subject;
 
   const SubjectDetailsScreen({super.key, required this.subject});
 
   @override
-  State<SubjectDetailsScreen> createState() => _SubjectDetailsScreenState();
+  ConsumerState<SubjectDetailsScreen> createState() => _SubjectDetailsScreenState();
 }
 
-class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
+class _SubjectDetailsScreenState extends ConsumerState<SubjectDetailsScreen> {
   // --- STATE VARIABLES ---
   List<FileSystemEntity> _recordings = [];
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -83,7 +85,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
         const SnackBar(content: Text("Recording deleted")),
       );
     } catch (e) {
-      print("Error deleting: $e");
+      debugPrint("Error deleting: $e");
     }
   }
 
@@ -94,22 +96,25 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
+    
     // Determine the subject color
     final Color subjectColor = widget.subject['color'] ?? const Color(0xFF3F6DFC);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
       appBar: AppBar(
-        title: Text(widget.subject['name'], style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: Text(widget.subject['name'], style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+          icon: const Icon(Icons.arrow_back_ios_new),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.more_vert, color: Colors.black), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
         ],
       ),
       body: _isLoading
@@ -155,7 +160,7 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
             SizedBox(height: 30.h),
 
             // --- LIST TITLE ---
-            Align(alignment: Alignment.centerLeft, child: Text("Lecture History", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold))),
+            Align(alignment: Alignment.centerLeft, child: Text("Lecture History", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87))),
             SizedBox(height: 15.h),
 
             // --- DYNAMIC LIST ---
@@ -165,9 +170,9 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.mic_none, size: 50.sp, color: Colors.grey[300]),
+                    Icon(Icons.mic_none, size: 50.sp, color: isDarkMode ? Colors.white24 : Colors.grey[300]),
                     SizedBox(height: 10.h),
-                    Text("No lectures recorded yet", style: TextStyle(color: Colors.grey[400])),
+                    Text("No lectures recorded yet", style: TextStyle(color: isDarkMode ? Colors.white38 : Colors.grey[400])),
                   ],
                 ),
               )
@@ -192,9 +197,9 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
                       margin: EdgeInsets.only(bottom: 15.h),
                       padding: EdgeInsets.all(15.w),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
                         borderRadius: BorderRadius.circular(15.r),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200),
                       ),
                       child: ListTile(
                         contentPadding: EdgeInsets.zero,
@@ -210,13 +215,11 @@ class _SubjectDetailsScreenState extends State<SubjectDetailsScreen> {
                             ),
                           ),
                         ),
-                        title: Text(fileName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
-                        subtitle: Text("Recorded ${_formatDate(file.statSync().modified)}", style: TextStyle(color: Colors.grey, fontSize: 12.sp)),
+                        title: Text(fileName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp, color: isDarkMode ? Colors.white : Colors.black87)),
+                        subtitle: Text("Recorded ${_formatDate(file.statSync().modified)}", style: TextStyle(color: isDarkMode ? Colors.white54 : Colors.grey, fontSize: 12.sp)),
                         trailing: IconButton(
-                          icon: const Icon(Icons.share, size: 20, color: Colors.grey),
+                          icon: Icon(Icons.share, size: 20, color: isDarkMode ? Colors.white54 : Colors.grey),
                           onPressed: () {
-                            // Share feature logic placeholder
-                            // Share.shareXFiles([XFile(file.path)]);
                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Share feature coming soon!")));
                           },
                         ),
