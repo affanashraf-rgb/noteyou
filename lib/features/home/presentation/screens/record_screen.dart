@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:io';
 import '../../../../main.dart';
+import '../../data/services/ai_service.dart';
 
 class RecordScreen extends ConsumerStatefulWidget {
   const RecordScreen({super.key});
@@ -17,6 +18,9 @@ class RecordScreen extends ConsumerStatefulWidget {
 }
 
 class _RecordScreenState extends ConsumerState<RecordScreen> {
+  // --- SERVICES ---
+  final AIService _aiService = AIService();
+
   // --- RECORDING VARIABLES ---
   late final AudioRecorder _audioRecorder;
   bool _isRecording = false;
@@ -32,7 +36,8 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
   // --- AI AGENT VARIABLES ---
   bool _showAiAgent = false;
   bool _isAiAnalyzing = false;
-  String _aiInsight = "Standby. Tap to analyze your current recording session.";
+  String _aiSummary = "Standby. Tap to analyze your current recording session.";
+  List<dynamic> _aiQuiz = [];
 
   @override
   void initState() {
@@ -72,7 +77,8 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
           _audioPath = filePath;
           _isPlaying = false;
           _isPaused = false;
-          _aiInsight = "Recording in progress... AI Agent is listening.";
+          _aiSummary = "Recording in progress... AI Agent is listening.";
+          _aiQuiz = [];
         });
 
         _startTimer();
@@ -92,7 +98,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
       setState(() {
         _isRecording = false;
         _audioPath = path;
-        _aiInsight = "Recording saved. Ready for AI analysis.";
+        _aiSummary = "Recording saved. Ready for AI analysis.";
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -136,23 +142,29 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
   }
 
   // --- AI ANALYSIS LOGIC ---
-  void _analyzeWithAi() {
-    if (_isRecording) return;
+  Future<void> _analyzeWithAi() async {
+    if (_isRecording || _audioPath == null) return;
     
     setState(() {
       _isAiAnalyzing = true;
-      _aiInsight = "Analyzing recording patterns and extracting key concepts...";
+      _aiSummary = "Analyzing recording with Gemini AI... Please wait.";
+      _showAiAgent = true; // Switch to AI tab automatically
     });
 
-    // Simulate AI processing
-    Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _isAiAnalyzing = false;
-          _aiInsight = "AI Insight: You've covered Algebra basics. The focus was on mapping Urdu variables like 'Seen' (س) to English 'x'. Next recommended step: Quadratic Equations.";
-        });
-      }
-    });
+    try {
+      final result = await _aiService.processLectureAudio(File(_audioPath!));
+      
+      setState(() {
+        _isAiAnalyzing = false;
+        _aiSummary = result['summary'] ?? "Could not generate summary.";
+        _aiQuiz = result['quiz'] ?? [];
+      });
+    } catch (e) {
+      setState(() {
+        _isAiAnalyzing = false;
+        _aiSummary = "Error: AI analysis failed. Please check your connection.";
+      });
+    }
   }
 
   // --- TIMER HELPERS ---
@@ -449,15 +461,26 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
             ],
           ),
           SizedBox(height: 15.h),
-          Text(_aiInsight, style: TextStyle(fontSize: 14.sp, height: 1.5, color: isDarkMode ? Colors.white70 : Colors.grey.shade700)),
+          Text(_aiSummary, style: TextStyle(fontSize: 14.sp, height: 1.5, color: isDarkMode ? Colors.white70 : Colors.grey.shade700)),
+          
+          if (_aiQuiz.isNotEmpty) ...[
+            SizedBox(height: 20.h),
+            Text("Generated Quiz", style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: const Color(0xFF3F6DFC))),
+            SizedBox(height: 10.h),
+            ..._aiQuiz.map((q) => Padding(
+              padding: EdgeInsets.only(bottom: 10.h),
+              child: Text("• ${q['question']}", style: TextStyle(fontSize: 13.sp, color: isDarkMode ? Colors.white60 : Colors.black54)),
+            )).toList(),
+          ],
+
           SizedBox(height: 25.h),
-          if (!_isAiAnalyzing && !_isRecording)
+          if (!_isAiAnalyzing && _audioPath != null)
             SizedBox(
               width: double.infinity,
               child: TextButton(
                 onPressed: _analyzeWithAi,
                 style: TextButton.styleFrom(backgroundColor: const Color(0xFF3F6DFC).withOpacity(0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
-                child: Text("Analyze with AI", style: TextStyle(color: const Color(0xFF3F6DFC), fontWeight: FontWeight.bold, fontSize: 14.sp)),
+                child: Text(_aiQuiz.isEmpty ? "Analyze with AI" : "Re-analyze with AI", style: TextStyle(color: const Color(0xFF3F6DFC), fontWeight: FontWeight.bold, fontSize: 14.sp)),
               ),
             ),
         ],
