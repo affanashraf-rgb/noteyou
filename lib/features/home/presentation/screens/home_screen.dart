@@ -60,6 +60,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  Future<void> _deleteRecording(FileSystemEntity file) async {
+    try {
+      await file.delete();
+      _loadData(); // Refresh list
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Recording deleted")),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error deleting: $e");
+    }
+  }
+
   void _addReminder(String title, String subject, DateTime date) {
     setState(() {
       _reminders.add(StudyReminder(title: title, subject: subject, date: date, type: "Quiz"));
@@ -168,14 +182,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       itemBuilder: (context, index) {
         final file = _recordings[index];
         final isPlaying = _playingPath == file.path;
-        return Container(
-          margin: EdgeInsets.only(bottom: 10.h),
-          decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(15.r), border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100)),
-          child: ListTile(
-            leading: CircleAvatar(backgroundColor: isPlaying ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1), child: Icon(isPlaying ? Icons.pause : Iconsax.microphone, color: isPlaying ? Colors.red : const Color(0xFF3F6DFC), size: 20.sp)),
-            title: Text("Recording ${index + 1}", style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold)),
-            subtitle: Text("Audio Note", style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
-            trailing: IconButton(icon: Icon(isPlaying ? Icons.stop_circle_outlined : Icons.play_circle_outline, color: isPlaying ? Colors.red : Colors.grey, size: 28.sp), onPressed: () => _handlePlay(file.path)),
+        return Dismissible(
+          key: Key(file.path),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(15.r)),
+            child: const Icon(Icons.delete, color: Colors.white),
+          ),
+          onDismissed: (direction) => _deleteRecording(file),
+          child: Container(
+            margin: EdgeInsets.only(bottom: 10.h),
+            decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(15.r), border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100)),
+            child: ListTile(
+              leading: CircleAvatar(backgroundColor: isPlaying ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1), child: Icon(isPlaying ? Icons.pause : Iconsax.microphone, color: isPlaying ? Colors.red : const Color(0xFF3F6DFC), size: 20.sp)),
+              title: Text("Recording ${index + 1}", style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold)),
+              subtitle: Text("Audio Note", style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+              trailing: IconButton(icon: Icon(isPlaying ? Icons.stop_circle_outlined : Icons.play_circle_outline, color: isPlaying ? Colors.red : Colors.grey, size: 28.sp), onPressed: () => _handlePlay(file.path)),
+            ),
           ),
         );
       },

@@ -38,6 +38,11 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
   bool _isAiAnalyzing = false;
   String _aiSummary = "Standby. Tap to analyze your current recording session.";
   List<dynamic> _aiQuiz = [];
+  
+  // --- CHAT VARIABLES ---
+  final TextEditingController _chatController = TextEditingController();
+  final List<Map<String, String>> _chatMessages = [];
+  bool _isTyping = false;
 
   @override
   void initState() {
@@ -59,6 +64,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
     _audioRecorder.dispose();
     _audioPlayer.dispose();
     _timer?.cancel();
+    _chatController.dispose();
     super.dispose();
   }
 
@@ -79,6 +85,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
           _isPaused = false;
           _aiSummary = "Recording in progress... AI Agent is listening.";
           _aiQuiz = [];
+          _chatMessages.clear();
         });
 
         _startTimer();
@@ -148,7 +155,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
     setState(() {
       _isAiAnalyzing = true;
       _aiSummary = "Analyzing recording with Gemini AI... Please wait.";
-      _showAiAgent = true; // Switch to AI tab automatically
+      _showAiAgent = true; 
     });
 
     try {
@@ -158,11 +165,37 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
         _isAiAnalyzing = false;
         _aiSummary = result['summary'] ?? "Could not generate summary.";
         _aiQuiz = result['quiz'] ?? [];
+        _chatMessages.add({"role": "assistant", "content": "I've analyzed your lecture! You can now ask me anything about it."});
       });
     } catch (e) {
       setState(() {
         _isAiAnalyzing = false;
         _aiSummary = "Error: AI analysis failed. Please check your connection.";
+      });
+    }
+  }
+
+  // --- CHAT LOGIC ---
+  Future<void> _sendMessage() async {
+    final message = _chatController.text.trim();
+    if (message.isEmpty) return;
+
+    setState(() {
+      _chatMessages.add({"role": "user", "content": message});
+      _chatController.clear();
+      _isTyping = true;
+    });
+
+    try {
+      final response = await _aiService.chatWithAgent(message);
+      setState(() {
+        _chatMessages.add({"role": "assistant", "content": response});
+        _isTyping = false;
+      });
+    } catch (e) {
+      setState(() {
+        _chatMessages.add({"role": "assistant", "content": "Sorry, I encountered an error."});
+        _isTyping = false;
       });
     }
   }
@@ -448,42 +481,145 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
   Widget _buildAiAgentSection(bool isDarkMode) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(20.w),
-      decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(20.r), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))]),
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(20.r),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("AI Analysis", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
-              if (_isAiAnalyzing) SizedBox(width: 15.w, height: 15.w, child: const CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF3F6DFC))),
-            ],
+          Padding(
+            padding: EdgeInsets.all(20.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("AI Analysis & Chat", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
+                    if (_isAiAnalyzing) SizedBox(width: 15.w, height: 15.w, child: const CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF3F6DFC))),
+                  ],
+                ),
+                SizedBox(height: 10.h),
+                Text(_aiSummary, style: TextStyle(fontSize: 14.sp, height: 1.5, color: isDarkMode ? Colors.white70 : Colors.grey.shade700)),
+                
+                if (_aiQuiz.isNotEmpty) ...[
+                  SizedBox(height: 15.h),
+                  Text("Generated Quiz", style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: const Color(0xFF3F6DFC))),
+                  SizedBox(height: 8.h),
+                  ..._aiQuiz.take(2).map((q) => Padding(
+                    padding: EdgeInsets.only(bottom: 5.h),
+                    child: Text("• ${q['question']}", style: TextStyle(fontSize: 13.sp, color: isDarkMode ? Colors.white60 : Colors.black54)),
+                  )).toList(),
+                ],
+              ],
+            ),
           ),
-          SizedBox(height: 15.h),
-          Text(_aiSummary, style: TextStyle(fontSize: 14.sp, height: 1.5, color: isDarkMode ? Colors.white70 : Colors.grey.shade700)),
-          
-          if (_aiQuiz.isNotEmpty) ...[
-            SizedBox(height: 20.h),
-            Text("Generated Quiz", style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: const Color(0xFF3F6DFC))),
-            SizedBox(height: 10.h),
-            ..._aiQuiz.map((q) => Padding(
-              padding: EdgeInsets.only(bottom: 10.h),
-              child: Text("• ${q['question']}", style: TextStyle(fontSize: 13.sp, color: isDarkMode ? Colors.white60 : Colors.black54)),
-            )).toList(),
-          ],
 
-          SizedBox(height: 25.h),
-          if (!_isAiAnalyzing && _audioPath != null)
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: _analyzeWithAi,
-                style: TextButton.styleFrom(backgroundColor: const Color(0xFF3F6DFC).withOpacity(0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
-                child: Text(_aiQuiz.isEmpty ? "Analyze with AI" : "Re-analyze with AI", style: TextStyle(color: const Color(0xFF3F6DFC), fontWeight: FontWeight.bold, fontSize: 14.sp)),
+          // CHAT INTERFACE
+          if (!_isAiAnalyzing && _audioPath != null) ...[
+            const Divider(height: 1),
+            Container(
+              height: 200.h,
+              padding: EdgeInsets.symmetric(horizontal: 15.w),
+              child: ListView.builder(
+                padding: EdgeInsets.symmetric(vertical: 10.h),
+                itemCount: _chatMessages.length + (_isTyping ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == _chatMessages.length) {
+                    return _buildTypingIndicator(isDarkMode);
+                  }
+                  final msg = _chatMessages[index];
+                  final isUser = msg['role'] == 'user';
+                  return _buildChatMessage(msg['content']!, isUser, isDarkMode);
+                },
               ),
             ),
+            Padding(
+              padding: EdgeInsets.all(12.w),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _chatController,
+                      style: TextStyle(fontSize: 14.sp, color: isDarkMode ? Colors.white : Colors.black),
+                      decoration: InputDecoration(
+                        hintText: "Ask anything about the lecture...",
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 13.sp),
+                        filled: true,
+                        fillColor: isDarkMode ? const Color(0xFF2C2C2C) : Colors.grey.shade100,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(25.r), borderSide: BorderSide.none),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                      ),
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
+                  ),
+                  SizedBox(width: 10.w),
+                  GestureDetector(
+                    onTap: _sendMessage,
+                    child: CircleAvatar(
+                      backgroundColor: const Color(0xFF3F6DFC),
+                      radius: 20.r,
+                      child: const Icon(Iconsax.send_1, color: Colors.white, size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          if (!_isAiAnalyzing && _audioPath == null)
+            Padding(
+              padding: EdgeInsets.all(20.w),
+              child: Text("Start recording to enable AI analysis and chat.", style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
+            ),
+
+          if (!_isAiAnalyzing && _audioPath != null && _aiQuiz.isEmpty)
+             Padding(
+               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+               child: SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: _analyzeWithAi,
+                  style: TextButton.styleFrom(backgroundColor: const Color(0xFF3F6DFC).withOpacity(0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
+                  child: Text("Analyze with AI", style: TextStyle(color: const Color(0xFF3F6DFC), fontWeight: FontWeight.bold, fontSize: 14.sp)),
+                ),
+              ),
+             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChatMessage(String text, bool isUser, bool isDarkMode) {
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: EdgeInsets.only(bottom: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 10.h),
+        constraints: BoxConstraints(maxWidth: 220.w),
+        decoration: BoxDecoration(
+          color: isUser ? const Color(0xFF3F6DFC) : (isDarkMode ? const Color(0xFF2C2C2C) : Colors.grey.shade100),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(15.r),
+            topRight: Radius.circular(15.r),
+            bottomLeft: Radius.circular(isUser ? 15.r : 0),
+            bottomRight: Radius.circular(isUser ? 0 : 15.r),
+          ),
+        ),
+        child: Text(text, style: TextStyle(fontSize: 13.sp, color: isUser ? Colors.white : (isDarkMode ? Colors.white : Colors.black87))),
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator(bool isDarkMode) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 10.h),
+        decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF2C2C2C) : Colors.grey.shade100, borderRadius: BorderRadius.circular(15.r)),
+        child: SizedBox(width: 30.w, child: const LinearProgressIndicator(backgroundColor: Colors.transparent, color: Color(0xFF3F6DFC))),
       ),
     );
   }

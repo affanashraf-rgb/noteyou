@@ -3,26 +3,25 @@ import 'dart:convert';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 class AIService {
-  // ⚠️ YOUR API KEY
   static const String _apiKey = "AIzaSyA0_eF8ql2e5y-wqUz8Rhmc6z3wfUxqcxU";
 
   late final GenerativeModel _model;
+  ChatSession? _chatSession;
 
   AIService() {
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash', // Flash is faster and cheaper
+      model: 'gemini-1.5-flash',
       apiKey: _apiKey,
     );
   }
 
-  // This function sends audio to Gemini and asks for a Summary + Quiz
+  // Initial analysis of the audio
   Future<Map<String, dynamic>> processLectureAudio(File audioFile) async {
     try {
       final audioBytes = await audioFile.readAsBytes();
 
-      // 1. THE PROMPT
-      final prompt = TextPart("""
-        You are an expert tutor. Listen to this lecture recording and do two things:
+      final prompt = """
+        You are an expert tutor. Analyze this lecture recording and:
         1. Create a concise summary (max 100 words).
         2. Create 3 quiz questions based on the lecture.
         
@@ -37,32 +36,56 @@ class AIService {
             }
           ]
         }
-        (Note: 'answer' should be the index of the correct option: 0, 1, 2, or 3)
-        Do not use Markdown formatting (like ```json). Just return the raw JSON string.
-      """);
+        Do not use Markdown formatting. Just return the raw JSON string.
+      """;
 
-      // 2. PREPARE AUDIO DATA
-      final audioPart = DataPart('audio/mp4', audioBytes);
+      final content = [
+        Content.multi([
+          TextPart(prompt),
+          DataPart('audio/mp4', audioBytes),
+        ])
+      ];
 
-      // 3. SEND TO GEMINI
-      final content = [Content.multi([prompt, audioPart])];
       final response = await _model.generateContent(content);
 
-      // 4. CLEAN UP RESPONSE
       String? responseText = response.text;
       if (responseText == null) throw "No response from AI";
 
+      // Clean the response
       responseText = responseText.replaceAll("```json", "").replaceAll("```", "").trim();
+      final result = jsonDecode(responseText);
 
-      // 5. PARSE TO MAP
-      return jsonDecode(responseText);
+      // Start a chat session using the summary as context instead of the raw audio
+      // This saves bandwidth and prevents "history too large" errors
+      _chatSession = _model.startChat(history: [
+        Content.text("Here is the summary of the lecture we are discussing: ${result['summary']}"),
+        Content.model([TextPart("Understood. I have the lecture summary. I'm ready to answer any questions about this topic.")]),
+      ]);
 
+      return result;
     } catch (e) {
-      print("AI Error: $e");
+      print("AI Analysis Error: $e");
       return {
-        "summary": "Could not analyze audio. Please check your internet connection or API key.",
+        "summary": "Could not analyze audio. Error: $e",
         "quiz": []
       };
+    }
+  }
+
+  // Chatbot functionality
+  Future<String> chatWithAgent(String message) async {
+    try {
+      if (_chatSession == null) {
+        // If no audio was processed, just start a normal chat
+        _chatSession = _model.startChat();
+      }
+
+      final response = await _chatSession!.sendMessage(Content.text(message));
+      return response.text ?? "I'm sorry, I couldn't process that.";
+    } catch (e) {
+      print("Chat Error Details: $e");
+      // Return the actual error message to help debugging
+      return "Chat Error: ${e.toString().split('\n').first}";
     }
   }
 }
