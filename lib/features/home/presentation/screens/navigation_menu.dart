@@ -1,39 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:iconsax/iconsax.dart';
+import '../../../../main.dart';
 import 'settings_screen.dart';
-
-// Import your screens
 import 'home_screen.dart';
 import 'subjects_screen.dart';
-import 'record_screen.dart'; // <--- Make sure this import is here!
+import 'record_screen.dart';
 
-class NavigationMenu extends StatefulWidget {
+class NavigationMenu extends ConsumerStatefulWidget {
   const NavigationMenu({super.key});
 
   @override
-  State<NavigationMenu> createState() => _NavigationMenuState();
+  ConsumerState<NavigationMenu> createState() => _NavigationMenuState();
 }
 
-class _NavigationMenuState extends State<NavigationMenu> {
+class _NavigationMenuState extends ConsumerState<NavigationMenu> {
   int _selectedIndex = 0;
 
-  // This list holds the screens for each tab
   final List<Widget> _screens = [
-    const HomeScreen(),     // Index 0: Home
-    const SubjectsScreen(), // Index 1: Subjects
-    const RecordScreen(),   // Index 2: Record (Microphone)
+    const HomeScreen(),
+    const SubjectsScreen(),
+    const RecordScreen(),
     const SettingsScreen(),
-    Container(),            // Index 3: Settings (Still empty for now)
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // This shows the current screen based on the index
-      body: _screens[_selectedIndex],
+    final themeMode = ref.watch(themeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
 
-      // The Real Navigation Bar
+    return Scaffold(
+      body: _screens[_selectedIndex],
       bottomNavigationBar: NavigationBarTheme(
         data: NavigationBarThemeData(
           labelTextStyle: MaterialStateProperty.all(
@@ -43,7 +41,7 @@ class _NavigationMenuState extends State<NavigationMenu> {
         child: NavigationBar(
           height: 70.h,
           elevation: 0,
-          backgroundColor: Colors.white,
+          backgroundColor: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
           selectedIndex: _selectedIndex,
           indicatorColor: Colors.transparent,
           onDestinationSelected: (index) {
@@ -53,23 +51,23 @@ class _NavigationMenuState extends State<NavigationMenu> {
           },
           destinations: [
             NavigationDestination(
-              icon: Icon(Iconsax.home_2, color: Colors.grey),
-              selectedIcon: Icon(Iconsax.home_2, color: Color(0xFF3F6DFC)),
+              icon: Icon(Iconsax.home_2, color: isDarkMode ? Colors.white70 : Colors.grey),
+              selectedIcon: const Icon(Iconsax.home_2, color: Color(0xFF3F6DFC)),
               label: 'Home',
             ),
             NavigationDestination(
-              icon: Icon(Iconsax.book, color: Colors.grey),
-              selectedIcon: Icon(Iconsax.book, color: Color(0xFF3F6DFC)),
+              icon: Icon(Iconsax.book, color: isDarkMode ? Colors.white70 : Colors.grey),
+              selectedIcon: const Icon(Iconsax.book, color: Color(0xFF3F6DFC)),
               label: 'Subjects',
             ),
             NavigationDestination(
-              icon: Icon(Iconsax.microphone_2, color: Colors.grey),
-              selectedIcon: Icon(Iconsax.microphone_2, color: Color(0xFF3F6DFC)),
+              icon: Icon(Iconsax.microphone_2, color: isDarkMode ? Colors.white70 : Colors.grey),
+              selectedIcon: const Icon(Iconsax.microphone_2, color: Color(0xFF3F6DFC)),
               label: 'Record',
             ),
             NavigationDestination(
-              icon: Icon(Iconsax.setting_2, color: Colors.grey),
-              selectedIcon: Icon(Iconsax.setting_2, color: Color(0xFF3F6DFC)),
+              icon: Icon(Iconsax.setting_2, color: isDarkMode ? Colors.white70 : Colors.grey),
+              selectedIcon: const Icon(Iconsax.setting_2, color: Color(0xFF3F6DFC)),
               label: 'Settings',
             ),
           ],

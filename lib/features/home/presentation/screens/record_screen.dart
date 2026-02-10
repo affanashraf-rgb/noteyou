@@ -29,6 +29,11 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
   bool _isPlaying = false;
   bool _isPaused = false;
 
+  // --- AI AGENT VARIABLES ---
+  bool _showAiAgent = false;
+  bool _isAiAnalyzing = false;
+  String _aiInsight = "Standby. Tap to analyze your current recording session.";
+
   @override
   void initState() {
     super.initState();
@@ -67,6 +72,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
           _audioPath = filePath;
           _isPlaying = false;
           _isPaused = false;
+          _aiInsight = "Recording in progress... AI Agent is listening.";
         });
 
         _startTimer();
@@ -86,6 +92,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
       setState(() {
         _isRecording = false;
         _audioPath = path;
+        _aiInsight = "Recording saved. Ready for AI analysis.";
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -126,6 +133,26 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
     } catch (e) {
       debugPrint("Error pausing audio: $e");
     }
+  }
+
+  // --- AI ANALYSIS LOGIC ---
+  void _analyzeWithAi() {
+    if (_isRecording) return;
+    
+    setState(() {
+      _isAiAnalyzing = true;
+      _aiInsight = "Analyzing recording patterns and extracting key concepts...";
+    });
+
+    // Simulate AI processing
+    Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _isAiAnalyzing = false;
+          _aiInsight = "AI Insight: You've covered Algebra basics. The focus was on mapping Urdu variables like 'Seen' (س) to English 'x'. Next recommended step: Quadratic Equations.";
+        });
+      }
+    });
   }
 
   // --- TIMER HELPERS ---
@@ -329,17 +356,24 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                   ),
                 ),
 
-                // REST OF THE UI
+                // AI AGENT & NOTES TOGGLE
                 SizedBox(height: 20.h),
                 Row(
                   children: [
                     Expanded(child: _buildStatusCard(isDarkMode: isDarkMode, icon: Iconsax.global, label: "MODE", value: "Offline", iconColor: Colors.green)),
                     SizedBox(width: 15.w),
-                    Expanded(child: _buildStatusCard(isDarkMode: isDarkMode, icon: Iconsax.magic_star, label: "AI STATUS", value: "Standby", iconColor: const Color(0xFF3F6DFC))),
+                    Expanded(child: _buildStatusCard(isDarkMode: isDarkMode, icon: Iconsax.magic_star, label: "AI STATUS", value: _isAiAnalyzing ? "Analyzing..." : "Standby", iconColor: const Color(0xFF3F6DFC))),
                   ],
                 ),
                 SizedBox(height: 25.h),
-                _buildStaticNoteSection(isDarkMode),
+                
+                // TAB TOGGLE
+                _buildTabToggle(isDarkMode),
+                SizedBox(height: 20.h),
+                
+                // DYNAMIC CONTENT (NOTES OR AI AGENT)
+                _showAiAgent ? _buildAiAgentSection(isDarkMode) : _buildStaticNoteSection(isDarkMode),
+
                 SizedBox(height: 25.h),
                 Row(
                   children: [
@@ -358,43 +392,94 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
   }
 
   // --- HELPER WIDGETS ---
-  Widget _buildStaticNoteSection(bool isDarkMode) {
-    return Column(
-      children: [
-        Container(
-          height: 50.h,
-          padding: EdgeInsets.all(4.w),
-          decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.grey.shade200, borderRadius: BorderRadius.circular(25.r)),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF2C2C2C) : Colors.white, borderRadius: BorderRadius.circular(25.r), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)]),
-                  alignment: Alignment.center,
-                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Iconsax.document_text, size: 16.sp, color: isDarkMode ? Colors.white : Colors.black87), SizedBox(width: 8.w), Text("Notes", style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87))]),
+
+  Widget _buildTabToggle(bool isDarkMode) {
+    return Container(
+      height: 50.h,
+      padding: EdgeInsets.all(4.w),
+      decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.grey.shade200, borderRadius: BorderRadius.circular(25.r)),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _showAiAgent = false),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: !_showAiAgent ? (isDarkMode ? const Color(0xFF2C2C2C) : Colors.white) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(25.r),
+                  boxShadow: !_showAiAgent ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
                 ),
+                alignment: Alignment.center,
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Iconsax.document_text, size: 16.sp, color: !_showAiAgent ? (isDarkMode ? Colors.white : Colors.black87) : Colors.grey.shade600), SizedBox(width: 8.w), Text("Notes", style: TextStyle(fontSize: 14.sp, fontWeight: !_showAiAgent ? FontWeight.bold : FontWeight.w500, color: !_showAiAgent ? (isDarkMode ? Colors.white : Colors.black87) : Colors.grey.shade600))]),
               ),
-              Expanded(child: Container(alignment: Alignment.center, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Iconsax.cpu, size: 16.sp, color: Colors.grey.shade600), SizedBox(width: 8.w), Text("AI Agent", style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500, color: Colors.grey.shade600))]))),
-            ],
+            ),
           ),
-        ),
-        SizedBox(height: 20.h),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(20.w),
-          decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(20.r), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))]),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _showAiAgent = true),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _showAiAgent ? (isDarkMode ? const Color(0xFF2C2C2C) : Colors.white) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(25.r),
+                  boxShadow: _showAiAgent ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
+                ),
+                alignment: Alignment.center,
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Iconsax.cpu, size: 16.sp, color: _showAiAgent ? (isDarkMode ? Colors.white : Colors.black87) : Colors.grey.shade600), SizedBox(width: 8.w), Text("AI Agent", style: TextStyle(fontSize: 14.sp, fontWeight: _showAiAgent ? FontWeight.bold : FontWeight.w500, color: _showAiAgent ? (isDarkMode ? Colors.white : Colors.black87) : Colors.grey.shade600))]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiAgentSection(bool isDarkMode) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(20.r), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Algebra Variables (س، ش)", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
-              SizedBox(height: 15.h),
-              Text("The lecturer explained that Urdu uses specific symbols for variables. Transitioning to English notation involves mapping 'Seen' to 'x'.", style: TextStyle(fontSize: 14.sp, height: 1.5, color: isDarkMode ? Colors.white70 : Colors.grey.shade700)),
-              SizedBox(height: 20.h),
-              Row(children: [Icon(Icons.check_circle_outline, color: const Color(0xFF3F6DFC), size: 18.sp), SizedBox(width: 8.w), Text("Key concept saved", style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: const Color(0xFF3F6DFC)))]),
+              Text("AI Analysis", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
+              if (_isAiAnalyzing) SizedBox(width: 15.w, height: 15.w, child: const CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF3F6DFC))),
             ],
           ),
-        ),
-      ],
+          SizedBox(height: 15.h),
+          Text(_aiInsight, style: TextStyle(fontSize: 14.sp, height: 1.5, color: isDarkMode ? Colors.white70 : Colors.grey.shade700)),
+          SizedBox(height: 25.h),
+          if (!_isAiAnalyzing && !_isRecording)
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: _analyzeWithAi,
+                style: TextButton.styleFrom(backgroundColor: const Color(0xFF3F6DFC).withOpacity(0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
+                child: Text("Analyze with AI", style: TextStyle(color: const Color(0xFF3F6DFC), fontWeight: FontWeight.bold, fontSize: 14.sp)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStaticNoteSection(bool isDarkMode) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(20.r), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Algebra Variables (س، ش)", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
+          SizedBox(height: 15.h),
+          Text("The lecturer explained that Urdu uses specific symbols for variables. Transitioning to English notation involves mapping 'Seen' to 'x'.", style: TextStyle(fontSize: 14.sp, height: 1.5, color: isDarkMode ? Colors.white70 : Colors.grey.shade700)),
+          SizedBox(height: 20.h),
+          Row(children: [Icon(Icons.check_circle_outline, color: const Color(0xFF3F6DFC), size: 18.sp), SizedBox(width: 8.w), Text("Key concept saved", style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: const Color(0xFF3F6DFC)))]),
+        ],
+      ),
     );
   }
 
