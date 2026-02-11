@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../../main.dart';
+import '../../data/services/ai_service.dart';
+import 'smart_notes_screen.dart';
 
 class SubjectDetailsScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> subject;
@@ -86,6 +88,38 @@ class _SubjectDetailsScreenState extends ConsumerState<SubjectDetailsScreen> {
       );
     } catch (e) {
       debugPrint("Error deleting: $e");
+    }
+  }
+
+  void _showAIProcessingDialog(BuildContext context, FileSystemEntity file) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final aiService = AIService();
+      final File audioFile = File(file.path);
+      
+      final data = await aiService.processLectureAudio(audioFile);
+
+      if (mounted) Navigator.pop(context); // Close loader
+
+      // --- THE NEW PART ---
+      // Navigate to the Smart Notes Screen and pass the AI data!
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SmartNotesScreen(aiData: data),
+          ),
+        );
+      }
+
+    } catch (e) {
+      if (mounted) Navigator.pop(context); // Close loader
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -218,10 +252,8 @@ class _SubjectDetailsScreenState extends ConsumerState<SubjectDetailsScreen> {
                         title: Text(fileName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp, color: isDarkMode ? Colors.white : Colors.black87)),
                         subtitle: Text("Recorded ${_formatDate(file.statSync().modified)}", style: TextStyle(color: isDarkMode ? Colors.white54 : Colors.grey, fontSize: 12.sp)),
                         trailing: IconButton(
-                          icon: Icon(Icons.share, size: 20, color: isDarkMode ? Colors.white54 : Colors.grey),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Share feature coming soon!")));
-                          },
+                          icon: const Icon(Icons.science, size: 20, color: Colors.grey),
+                          onPressed: () => _showAIProcessingDialog(context, file),
                         ),
                       ),
                     ),
