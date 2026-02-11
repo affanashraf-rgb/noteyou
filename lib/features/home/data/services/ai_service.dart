@@ -13,22 +13,21 @@ class AIService {
 
   AIService() {
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash', 
+      model: 'gemini-2.5-flash',
       apiKey: _apiKey,
     );
   }
 
-  Future<Map<String, dynamic>> processLectureAudio(File audioFile, {String? subject}) async {
+  Future<Map<String, dynamic>> processLectureAudio(File audioFile, {String? subject, String? lectureName}) async {
     try {
       final audioBytes = await audioFile.readAsBytes();
       
-      // Load custom prompt from settings, or use default
       final prefs = await SharedPreferences.getInstance();
       final String customPrompt = prefs.getString('custom_summary_prompt') ?? """
         Analyze this lecture recording and:
-        1. Create a detailed summary (use bulletpoints, headings, and list of topics covered, with enough words to give a thorough understanding of the complete lecture).
+        1. Create a detailed summary (use bulletpoints, headings, and list of topics covered).
         2. Create 3 quiz questions based on the lecture.
-        3. Create a full, detailed, and explanatory document of the lecture.(make sure no to add data from your side keep the document strictly according to lecture)
+        3. Create a full, detailed, and explanatory document of the lecture. (Where relevant, include simple markdown-style diagrams or visual descriptions).
       """;
 
       final String fullPrompt = """
@@ -36,8 +35,9 @@ class AIService {
         
         Return the result STRICTLY as a JSON object with this format:
         {
+          "displayName": "${lectureName ?? 'New Lecture'}",
           "summary": "The detailed summary...",
-          "explanatoryDoc": "The full detailed explanation...",
+          "explanatoryDoc": "The full detailed explanation with visual descriptions...",
           "quiz": [
             {
               "question": "Question?",
@@ -79,6 +79,32 @@ class AIService {
     }
   }
 
+  Future<List<dynamic>> generateNewQuiz(String context) async {
+    try {
+      final prompt = """
+      Based on the following lecture context, generate 3 new and unique quiz questions.
+      Return the result STRICTLY as a JSON array like this:
+      [
+        {"question": "New Question 1?", "options": ["A", "B", "C", "D"], "answer": 0},
+        {"question": "New Question 2?", "options": ["A", "B", "C", "D"], "answer": 1}
+      ]
+
+      Context:
+      $context
+      """;
+      
+      final response = await _model.generateContent([Content.text(prompt)]);
+      String? responseText = response.text;
+      if (responseText == null) throw "No response";
+
+      responseText = responseText.replaceAll("```json", "").replaceAll("```", "").trim();
+      return jsonDecode(responseText);
+    } catch (e) {
+      debugPrint("New Quiz Error: $e");
+      return [];
+    }
+  }
+
   Future<void> _saveSmartNotes(String subject, String audioPath, Map<String, dynamic> data) async {
     try {
       final Directory appDocDir = await getApplicationDocumentsDirectory();
@@ -93,7 +119,7 @@ class AIService {
       final File file = File('$folderPath/$fileName');
       await file.writeAsString(jsonEncode(data));
     } catch (e) {
-      debugPrint("Error saving notes: $e");
+      print("Error saving notes: $e");
     }
   }
 
