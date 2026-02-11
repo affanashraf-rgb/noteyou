@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../main.dart'; 
 import 'profile_info_screen.dart';
+import 'prompt_settings_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -123,13 +124,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: BoxDecoration(
                 color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
                 borderRadius: BorderRadius.circular(25.r),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))],
               ),
               child: Row(
                 children: [
                   CircleAvatar(
                     radius: 30.r,
-                    backgroundColor: const Color(0xFF3F6DFC).withOpacity(0.1),
+                    backgroundColor: const Color(0xFF3F6DFC).withValues(alpha: 0.1),
                     child: Icon(Iconsax.user, size: 30.sp, color: const Color(0xFF3F6DFC)),
                   ),
                   SizedBox(width: 15.w),
@@ -142,7 +143,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         SizedBox(height: 5.h),
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                          decoration: BoxDecoration(color: const Color(0xFF3F6DFC).withOpacity(0.1), borderRadius: BorderRadius.circular(5.r)),
+                          decoration: BoxDecoration(color: const Color(0xFF3F6DFC).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5.r)),
                           child: Text("PRO PLAN", style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: const Color(0xFF3F6DFC))),
                         ),
                       ],
@@ -174,6 +175,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             SizedBox(height: 20.h),
             _sectionHeader("APP SETTINGS"),
+            _buildSettingTile(icon: Iconsax.magic_star, title: "AI Prompt Settings", isDarkMode: isDarkMode, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const PromptSettingsScreen()))),
             _buildSettingTile(icon: Iconsax.global, title: "Language", isDarkMode: isDarkMode, subtitle: _language, onTap: _showLanguageDialog),
             _buildSettingTile(icon: Iconsax.moon, title: "Dark Mode", isDarkMode: isDarkMode, trailing: Switch(
               value: isDarkMode,
@@ -203,7 +205,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       decoration: BoxDecoration(
         color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 5)],
       ),
       child: ListTile(
         onTap: onTap,

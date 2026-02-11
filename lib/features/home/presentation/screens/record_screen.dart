@@ -51,7 +51,6 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
     super.initState();
     _audioRecorder = AudioRecorder();
 
-    // Listen: When audio finishes playing, reset the UI (Removed unused fields)
     _audioPlayer.onPlayerComplete.listen((event) {
       if (mounted) setState(() {});
     });
@@ -118,7 +117,6 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
         ),
       );
 
-      // Auto-analyze after recording stops
       _analyzeWithAi();
 
     } catch (e) {
@@ -137,7 +135,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
     });
 
     try {
-      final result = await _aiService.processLectureAudio(File(_audioPath!));
+      final result = await _aiService.processLectureAudio(File(_audioPath!), subject: _selectedSubject);
       
       if (!mounted) return;
       setState(() {
@@ -214,7 +212,6 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
             child: Column(
               children: [
-                // 1. MAIN HEADER
                 Row(
                   children: [
                     CircleAvatar(radius: 20.r, backgroundColor: const Color(0xFF3F6DFC), child: Icon(Iconsax.microphone_2, color: Colors.white, size: 20.sp)),
@@ -228,7 +225,6 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                 ),
                 SizedBox(height: 25.h),
 
-                // 2. SUBJECT SELECTION
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 15.w),
                   decoration: BoxDecoration(
@@ -249,7 +245,6 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                 ),
                 SizedBox(height: 20.h),
 
-                // 3. MAIN RECORDING CARD
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.symmetric(vertical: 30.h, horizontal: 20.w),
