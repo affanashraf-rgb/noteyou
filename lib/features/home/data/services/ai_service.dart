@@ -25,9 +25,9 @@ class AIService {
       final prefs = await SharedPreferences.getInstance();
       final String customPrompt = prefs.getString('custom_summary_prompt') ?? """
         Analyze this lecture recording and:
-        1. Create a detailed summary (use bulletpoints, headings, and list of topics covered).
+        1. Create a optimal summary length of summary shoud be according to lecture  (use bulletpoints, headings, and list of topics covered).
         2. Create 3 quiz questions based on the lecture.
-        3. Create a full, detailed, and explanatory document of the lecture. (Where relevant, include simple markdown-style diagrams or visual descriptions).
+        3. Create a full, detailed, and explanatory document of the lecture me sure no to add additional information or data just make is fully according to lecture. (Where relevant, include simple markdown-style diagrams or visual descriptions).
       """;
 
       final String fullPrompt = """

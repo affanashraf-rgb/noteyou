@@ -4,10 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Import the new Navigation Menu
 import 'features/home/presentation/screens/navigation_menu.dart';
+import 'features/home/data/services/notification_service.dart';
 
-// Provider to manage theme state
 final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) {
   return ThemeNotifier();
 });
@@ -32,7 +31,13 @@ class ThemeNotifier extends StateNotifier<ThemeMode> {
   }
 }
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Notification Service
+  final notificationService = NotificationService();
+  await notificationService.init();
+  
   runApp(const ProviderScope(child: NoteYouApp()));
 }
 
