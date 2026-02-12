@@ -7,6 +7,7 @@ import 'settings_screen.dart';
 import 'home_screen.dart';
 import 'subjects_screen.dart';
 import 'record_screen.dart';
+import 'tasks_screen.dart';
 
 class NavigationMenu extends ConsumerStatefulWidget {
   const NavigationMenu({super.key});
@@ -22,6 +23,7 @@ class _NavigationMenuState extends ConsumerState<NavigationMenu> {
     const HomeScreen(),
     const SubjectsScreen(),
     const RecordScreen(),
+    const TasksScreen(), // Added Tasks Screen
     const SettingsScreen(),
   ];
 
@@ -64,6 +66,11 @@ class _NavigationMenuState extends ConsumerState<NavigationMenu> {
               icon: Icon(Iconsax.microphone_2, color: isDarkMode ? Colors.white70 : Colors.grey),
               selectedIcon: const Icon(Iconsax.microphone_2, color: Color(0xFF3F6DFC)),
               label: 'Record',
+            ),
+            NavigationDestination(
+              icon: Icon(Iconsax.task_square, color: isDarkMode ? Colors.white70 : Colors.grey),
+              selectedIcon: const Icon(Iconsax.task_square, color: Color(0xFF3F6DFC)),
+              label: 'Tasks',
             ),
             NavigationDestination(
               icon: Icon(Iconsax.setting_2, color: isDarkMode ? Colors.white70 : Colors.grey),
