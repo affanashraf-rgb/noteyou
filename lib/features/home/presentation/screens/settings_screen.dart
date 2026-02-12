@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../main.dart'; 
 import 'profile_info_screen.dart';
 import 'prompt_settings_screen.dart';
+import 'daily_quiz_settings_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -106,64 +107,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final isDarkMode = themeMode == ThemeMode.dark;
 
     return Scaffold(
+      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
       appBar: AppBar(
-        title: const Text("Settings"),
-        centerTitle: true,
+        title: Text("Settings", style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        centerTitle: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(icon: Icon(Iconsax.search_normal, color: isDarkMode ? Colors.white : Colors.black), onPressed: (){}),
+          IconButton(icon: Icon(Iconsax.notification, color: isDarkMode ? Colors.white : Colors.black), onPressed: (){}),
+        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(horizontal: 20.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 20.h),
-
-            // --- PROFILE CARD ---
-            Container(
-              padding: EdgeInsets.all(20.w),
-              decoration: BoxDecoration(
-                color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-                borderRadius: BorderRadius.circular(25.r),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))],
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 30.r,
-                    backgroundColor: const Color(0xFF3F6DFC).withValues(alpha: 0.1),
-                    child: Icon(Iconsax.user, size: 30.sp, color: const Color(0xFF3F6DFC)),
-                  ),
-                  SizedBox(width: 15.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(_userName, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
-                        Text(_userEmail, style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
-                        SizedBox(height: 5.h),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                          decoration: BoxDecoration(color: const Color(0xFF3F6DFC).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5.r)),
-                          child: Text("PRO PLAN", style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: const Color(0xFF3F6DFC))),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: _navigateToProfileInfo,
-                    icon: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(15.r)),
-                      child: Text("Edit", style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold)),
-                    ),
-                  )
-                ],
-              ),
-            ),
-
+            SizedBox(height: 10.h),
+            _buildProfileCard(isDarkMode),
             SizedBox(height: 30.h),
-
-            // --- SECTIONS ---
             _sectionHeader("ACCOUNT"),
             _buildSettingTile(icon: Iconsax.user, title: "Profile Information", isDarkMode: isDarkMode, onTap: _navigateToProfileInfo),
             _buildSettingTile(icon: Iconsax.notification, title: "Notifications", isDarkMode: isDarkMode, trailing: Switch(
@@ -175,6 +138,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             SizedBox(height: 20.h),
             _sectionHeader("APP SETTINGS"),
+            _buildSettingTile(icon: Iconsax.task_square, title: "Daily Quiz Settings", isDarkMode: isDarkMode, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const DailyQuizSettingsScreen()))),
             _buildSettingTile(icon: Iconsax.magic_star, title: "AI Prompt Settings", isDarkMode: isDarkMode, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const PromptSettingsScreen()))),
             _buildSettingTile(icon: Iconsax.global, title: "Language", isDarkMode: isDarkMode, subtitle: _language, onTap: _showLanguageDialog),
             _buildSettingTile(icon: Iconsax.moon, title: "Dark Mode", isDarkMode: isDarkMode, trailing: Switch(
@@ -192,31 +156,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Widget _buildProfileCard(bool isDarkMode) {
+    return Container(
+      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(25.r),
+        border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200)
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 30.r,
+            backgroundColor: const Color(0xFF3F6DFC).withValues(alpha: 0.1),
+            child: Icon(Iconsax.user, size: 30.sp, color: const Color(0xFF3F6DFC)),
+          ),
+          SizedBox(width: 15.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_userName, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
+                Text(_userEmail, style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+                SizedBox(height: 5.h),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                  decoration: BoxDecoration(color: const Color(0xFF3F6DFC).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5.r)),
+                  child: Text("PRO PLAN", style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: const Color(0xFF3F6DFC))),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: _navigateToProfileInfo,
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 8.h),
+              side: BorderSide(color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))
+            ),
+            child: Text("Edit", style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
+          )
+        ],
+      ),
+    );
+  }
+
   Widget _sectionHeader(String title) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 10.h),
+      padding: EdgeInsets.only(bottom: 15.h, top: 10.h, left: 5.w),
       child: Text(title, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
     );
   }
 
   Widget _buildSettingTile({required IconData icon, required String title, required bool isDarkMode, String? subtitle, Widget? trailing, VoidCallback? onTap}) {
     return Container(
-      margin: EdgeInsets.only(bottom: 15.h),
+      margin: EdgeInsets.only(bottom: 10.h),
       decoration: BoxDecoration(
         color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 5)],
+         border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200)
       ),
       child: ListTile(
         onTap: onTap,
         leading: Container(
           padding: EdgeInsets.all(10.w),
-          decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF2C2C2C) : const Color(0xFFF2F4F7), borderRadius: BorderRadius.circular(12.r)),
+          decoration: BoxDecoration(
+            color: isDarkMode ? const Color(0xFF2C2C2C) : const Color(0xFFF2F4F7),
+            borderRadius: BorderRadius.circular(15.r),
+          ),
           child: Icon(icon, color: isDarkMode ? Colors.white70 : Colors.black87, size: 20.sp),
         ),
-        title: Text(title, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600)),
+        title: Text(title, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: isDarkMode ? Colors.white : Colors.black87)),
         subtitle: subtitle != null ? Text(subtitle, style: TextStyle(fontSize: 12.sp, color: Colors.grey)) : null,
         trailing: trailing ?? Icon(Icons.arrow_forward_ios, size: 14.sp, color: Colors.grey),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
       ),
     );
   }
