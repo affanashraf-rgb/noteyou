@@ -14,7 +14,7 @@ class AIService {
   AIService() {
     _model = GenerativeModel(
       // Corrected to a valid stable model name for release build
-      model: 'gemini-2.5-flash',
+      model: 'YOUR_API_KEY_HERE',
       apiKey: _apiKey,
     );
   }
