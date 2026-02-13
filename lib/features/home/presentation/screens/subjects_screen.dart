@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../main.dart';
-import 'subject_details_screen.dart'; // Import the new file
+import '../../data/logic/subject_provider.dart';
+import 'subject_details_screen.dart';
 
 class SubjectsScreen extends ConsumerStatefulWidget {
   const SubjectsScreen({super.key});
@@ -13,41 +14,23 @@ class SubjectsScreen extends ConsumerStatefulWidget {
 }
 
 class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
-  // 1. DYNAMIC DATA
-  List<Map<String, dynamic>> subjects = [
-    {"name": "Mathematics", "count": "3", "desc": "Algebra, Calculus", "color": const Color(0xFF4A90E2), "icon": Icons.functions},
-    {"name": "Physics", "count": "1", "desc": "Mechanics, Thermo", "color": const Color(0xFF9B51E0), "icon": Icons.science},
-    {"name": "Literature", "count": "5", "desc": "Poetry, Prose", "color": const Color(0xFF27AE60), "icon": Icons.menu_book},
-  ];
-
-  // 2. LOGIC: Add Subject
   void _addSubject(String name, Color color) {
-    setState(() {
-      subjects.add({
-        "name": name,
-        "count": "0",
-        "desc": "New Course",
-        "color": color,
-        "icon": Icons.book,
-      });
-    });
+    ref.read(subjectProvider.notifier).addSubject(Subject(
+      name: name,
+      desc: "New Course",
+      color: color,
+      icon: Icons.book,
+    ));
     Navigator.pop(context);
   }
 
-  // 3. LOGIC: Delete Subject
-  void _deleteSubject(int index) {
-    final deletedSubject = subjects[index];
-    setState(() {
-      subjects.removeAt(index);
-    });
-    // Undo option
+  void _deleteSubject(String name) {
+    ref.read(subjectProvider.notifier).deleteSubject(name);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text("${deletedSubject['name']} deleted"),
-      action: SnackBarAction(label: "UNDO", onPressed: () => setState(() => subjects.insert(index, deletedSubject))),
+      content: Text("$name deleted"),
     ));
   }
 
-  // 4. UI: Show Dialog
   void _showAddDialog() {
     String newName = "";
     Color selectedColor = const Color(0xFF3F6DFC);
@@ -100,8 +83,12 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
+    
+    // --- WATCH THE GLOBAL SUBJECTS ---
+    final List<Subject> subjects = ref.watch(subjectProvider);
 
     return Scaffold(
+      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
       appBar: AppBar(
         title: Text("My Subjects", style: TextStyle(fontWeight: FontWeight.bold)),
         leading: IconButton(
@@ -122,13 +109,17 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
         itemBuilder: (context, index) {
           final s = subjects[index];
           return Dismissible(
-            key: Key(s['name']),
+            key: Key(s.name),
             background: Container(color: Colors.red, alignment: Alignment.centerRight, padding: EdgeInsets.only(right: 20.w), child: const Icon(Icons.delete, color: Colors.white)),
-            onDismissed: (direction) => _deleteSubject(index),
+            onDismissed: (direction) => _deleteSubject(s.name),
             child: GestureDetector(
               onTap: () {
-                // Navigate to details
-                Navigator.push(context, MaterialPageRoute(builder: (c) => SubjectDetailsScreen(subject: s)));
+                Navigator.push(context, MaterialPageRoute(builder: (c) => SubjectDetailsScreen(subject: {
+                  'name': s.name,
+                  'desc': s.desc,
+                  'color': s.color,
+                  'icon': s.icon,
+                })));
               },
               child: Container(
                 margin: EdgeInsets.only(bottom: 15.h),
@@ -139,17 +130,10 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
                   border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200),
                 ),
                 child: ListTile(
-                  leading: CircleAvatar(backgroundColor: s['color'].withOpacity(0.1), child: Icon(s['icon'], color: s['color'])),
-                  title: Text(s['name'], style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp)),
-                  subtitle: Text(s['desc']),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text("${s['count']}", style: TextStyle(color: Colors.grey, fontSize: 12.sp, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 10.w),
-                      Icon(Icons.arrow_forward_ios, size: 14.sp, color: Colors.grey),
-                    ],
-                  ),
+                  leading: CircleAvatar(backgroundColor: s.color.withValues(alpha: 0.1), child: Icon(s.icon, color: s.color)),
+                  title: Text(s.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp, color: isDarkMode ? Colors.white : Colors.black87)),
+                  subtitle: Text(s.desc, style: TextStyle(color: Colors.grey)),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 14.sp, color: Colors.grey),
                 ),
               ),
             ),

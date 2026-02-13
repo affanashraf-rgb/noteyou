@@ -13,29 +13,34 @@ class AIService {
 
   AIService() {
     _model = GenerativeModel(
+      // Corrected to a valid stable model name for release build
       model: 'gemini-2.5-flash',
       apiKey: _apiKey,
     );
   }
 
-  Future<Map<String, dynamic>> processLectureAudio(File audioFile, {String? subject, String? lectureName}) async {
+  Future<Map<String, dynamic>> processLectureAudio(File audioFile, {String? subject}) async {
     try {
       final audioBytes = await audioFile.readAsBytes();
       
       final prefs = await SharedPreferences.getInstance();
       final String customPrompt = prefs.getString('custom_summary_prompt') ?? """
         Analyze this lecture recording and:
-        1. Create a optimal summary length of summary shoud be according to lecture  (use bulletpoints, headings, and list of topics covered).
+        1. Create an optimal summary length of summary shoud be according to lecture (use bulletpoints, headings, and list of topics covered).
         2. Create 3 quiz questions based on the lecture.
-        3. Create a full, detailed, and explanatory document of the lecture me sure no to add additional information or data just make is fully according to lecture. (Where relevant, include simple markdown-style diagrams or visual descriptions).
+        3. Create a full, detailed, and explanatory document of the lecture. Make sure not to add additional information or data, just make it fully according to lecture. (Where relevant, include simple markdown-style diagrams or visual descriptions).
       """;
 
       final String fullPrompt = """
         You are an expert tutor. $customPrompt
         
+        Additionally, generate a creative and highly descriptive display name for this lecture. 
+        Format example: (Subject Short Name-Lec #[Number]- Main Topics). 
+        e.g., "Eng-Lec 1- nouns, pronouns and its uses" or "Math-Lec 4- Quadratic Equations derivation".
+        
         Return the result STRICTLY as a JSON object with this format:
         {
-          "displayName": "${lectureName ?? 'New Lecture'}",
+          "displayName": "Generated descriptive name here",
           "summary": "The detailed summary...",
           "explanatoryDoc": "The full detailed explanation with visual descriptions...",
           "quiz": [
@@ -74,15 +79,17 @@ class AIService {
 
       return result;
     } catch (e) {
-      debugPrint("AI Error: $e");
-      return {"summary": "Error: ${e.toString().split('\n').first}", "quiz": [], "explanatoryDoc": ""};
+      if (kDebugMode) {
+        print("AI Error: $e");
+      }
+      return {"summary": "Error: ${e.toString().split('\n').first}", "quiz": [], "explanatoryDoc": "", "displayName": "New Lecture"};
     }
   }
 
   Future<List<dynamic>> generateNewQuiz(String context) async {
     try {
       final prompt = """
-      Based on the following lecture context, generate 3 new and unique quiz questions.
+      Based on the following lecture context, generate 3 or 4 new and unique quiz questions based on the need.
       Return the result STRICTLY as a JSON array like this:
       [
         {"question": "New Question 1?", "options": ["A", "B", "C", "D"], "answer": 0},
@@ -100,7 +107,9 @@ class AIService {
       responseText = responseText.replaceAll("```json", "").replaceAll("```", "").trim();
       return jsonDecode(responseText);
     } catch (e) {
-      debugPrint("New Quiz Error: $e");
+      if (kDebugMode) {
+        print("New Quiz Error: $e");
+      }
       return [];
     }
   }
@@ -119,7 +128,9 @@ class AIService {
       final File file = File('$folderPath/$fileName');
       await file.writeAsString(jsonEncode(data));
     } catch (e) {
-      print("Error saving notes: $e");
+      if (kDebugMode) {
+        print("Error saving notes: $e");
+      }
     }
   }
 

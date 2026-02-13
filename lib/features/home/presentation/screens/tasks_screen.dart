@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../main.dart';
 import '../../data/models/task.dart';
+import '../../data/logic/subject_provider.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -46,13 +47,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     await prefs.setString('user_tasks', encoded);
   }
 
-  void _addTask(String title, String subject, DateTime dueDate) {
+  void _addTask(String title, String subject, String type, DateTime dueDate) {
     final newTask = Task(
       id: const Uuid().v4(),
       title: title,
       description: "",
       dueDate: dueDate,
       subject: subject,
+      type: type,
     );
     setState(() {
       _tasks.add(newTask);
@@ -80,15 +82,23 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
   void _showAddTaskSheet() {
     String title = "";
-    String subject = "General";
+    String? selectedSubject;
+    String selectedType = "Assignment";
     DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
+
+    final userSubjects = ref.read(subjectProvider);
+    final taskTypes = ["Assignment", "Handouts", "Quiz", "General"];
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30.r))),
+      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
+        builder: (context, setSheetState) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30.r)),
+          ),
           padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 25.w, right: 25.w, top: 25.h),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -96,21 +106,47 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             children: [
               Text("Add Homework Task", style: GoogleFonts.poppins(fontSize: 20.sp, fontWeight: FontWeight.bold)),
               SizedBox(height: 20.h),
+              
               TextField(
                 onChanged: (v) => title = v,
-                autofocus: true,
                 decoration: InputDecoration(
                   labelText: "Task Title",
                   filled: true,
-                  fillColor: Colors.grey.shade100,
+                  fillColor: Colors.grey.withValues(alpha: 0.05),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(15.r), borderSide: BorderSide.none),
                 ),
               ),
-              SizedBox(height: 20.h),
+              SizedBox(height: 15.h),
+
+              DropdownButtonFormField<String>(
+                value: selectedSubject,
+                hint: const Text("Select Subject"),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.grey.withValues(alpha: 0.05),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15.r), borderSide: BorderSide.none),
+                ),
+                items: userSubjects.map((s) => DropdownMenuItem(value: s.name, child: Text(s.name))).toList(),
+                onChanged: (v) => setSheetState(() => selectedSubject = v),
+              ),
+              SizedBox(height: 15.h),
+
+              DropdownButtonFormField<String>(
+                value: selectedType,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.grey.withValues(alpha: 0.05),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15.r), borderSide: BorderSide.none),
+                ),
+                items: taskTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                onChanged: (v) => setSheetState(() => selectedType = v!),
+              ),
+              SizedBox(height: 15.h),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Due Date:", style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text("Due Date:", style: TextStyle(fontWeight: FontWeight.w600)),
                   TextButton(
                     onPressed: () async {
                       final picked = await showDatePicker(context: context, initialDate: selectedDate, firstDate: DateTime.now(), lastDate: DateTime(2030));
@@ -120,19 +156,22 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                   )
                 ],
               ),
-              SizedBox(height: 30.h),
+              SizedBox(height: 25.h),
+
               SizedBox(
                 width: double.infinity,
                 height: 55.h,
                 child: ElevatedButton(
                   onPressed: () {
-                    if (title.isNotEmpty) {
-                      _addTask(title, subject, selectedDate);
+                    if (title.isNotEmpty && selectedSubject != null) {
+                      _addTask(title, selectedSubject!, selectedType, selectedDate);
                       Navigator.pop(context);
+                    } else if (selectedSubject == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select a subject!")));
                     }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3F6DFC), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.r))),
-                  child: Text("Add Task", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: const Text("Add Task", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
               SizedBox(height: 30.h),
@@ -181,23 +220,53 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       onDismissed: (_) => _deleteTask(task.id),
                       child: Container(
                         margin: EdgeInsets.only(bottom: 15.h),
+                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                         decoration: BoxDecoration(
                           color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
                           borderRadius: BorderRadius.circular(20.r),
                           border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200),
                         ),
-                        child: ListTile(
-                          leading: IconButton(
-                            icon: Icon(task.isCompleted ? Icons.check_circle : Icons.radio_button_unchecked, color: task.isCompleted ? Colors.green : Colors.grey),
-                            onPressed: () => _toggleTask(task.id),
-                          ),
-                          title: Text(task.title, style: TextStyle(fontWeight: FontWeight.bold, decoration: task.isCompleted ? TextDecoration.lineThrough : null, color: isDarkMode ? Colors.white : Colors.black87)),
-                          subtitle: Text("Due: ${task.dueDate.day}/${task.dueDate.month}", style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
-                          trailing: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                            decoration: BoxDecoration(color: const Color(0xFF3F6DFC).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10.r)),
-                            child: Text(task.subject, style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: const Color(0xFF3F6DFC))),
-                          ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(task.isCompleted ? Icons.check_circle : Icons.radio_button_unchecked, color: task.isCompleted ? Colors.green : Colors.grey),
+                              onPressed: () => _toggleTask(task.id),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    task.title,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14.sp,
+                                      decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                                      color: isDarkMode ? Colors.white : Colors.black87
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    "${task.type} • Due: ${task.dueDate.day}/${task.dueDate.month}",
+                                    style: TextStyle(fontSize: 11.sp, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              margin: EdgeInsets.only(left: 10.w),
+                              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF3F6DFC).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10.r)
+                              ),
+                              child: Text(
+                                task.subject,
+                                style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: const Color(0xFF3F6DFC)),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );

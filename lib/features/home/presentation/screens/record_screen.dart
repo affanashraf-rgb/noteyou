@@ -9,6 +9,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'dart:io';
 import '../../../../main.dart';
 import '../../data/services/ai_service.dart';
+import '../../data/logic/subject_provider.dart';
 
 class RecordScreen extends ConsumerStatefulWidget {
   const RecordScreen({super.key});
@@ -30,7 +31,6 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
 
   // --- WORKFLOW VARIABLES ---
   String? _selectedSubject;
-  final List<String> _subjects = ["Mathematics", "Physics", "Literature", "History", "Chemistry"];
 
   // --- PLAYBACK VARIABLES ---
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -202,6 +202,9 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
+    
+    // --- WATCH THE GLOBAL SUBJECTS ---
+    final List<Subject> userSubjects = ref.watch(subjectProvider);
 
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
@@ -238,7 +241,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                       hint: Text("Select Subject", style: TextStyle(color: Colors.grey, fontSize: 14.sp)),
                       isExpanded: true,
                       dropdownColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-                      items: _subjects.map((s) => DropdownMenuItem(value: s, child: Text(s, style: TextStyle(fontSize: 14.sp, color: isDarkMode ? Colors.white : Colors.black87)))).toList(),
+                      items: userSubjects.map((s) => DropdownMenuItem(value: s.name, child: Text(s.name, style: TextStyle(fontSize: 14.sp, color: isDarkMode ? Colors.white : Colors.black87)))).toList(),
                       onChanged: _isRecording ? null : (v) => setState(() => _selectedSubject = v),
                     ),
                   ),

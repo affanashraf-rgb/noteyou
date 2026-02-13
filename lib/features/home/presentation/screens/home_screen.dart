@@ -1,17 +1,23 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // IMPORTS
 import '../../../../main.dart';
 import '../../data/models/study_reminder.dart';
+import '../../data/models/task.dart';
 import '../../data/logic/home_logic.dart';
+import '../../data/logic/subject_provider.dart';
 import 'subjects_screen.dart';
 import 'study_session_screen.dart';
 import 'subject_details_screen.dart';
+import 'smart_notes_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -27,7 +33,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // UI State
   String _greeting = "Hello";
   List<FileSystemEntity> _recordings = [];
+  Map<String, String> _displayNames = {}; // Store AI suggested names
   List<StudyReminder> _reminders = [];
+  List<Task> _tasks = [];
   String? _playingPath;
 
   @override
@@ -43,11 +51,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _loadData() async {
     final recs = await _logic.loadRecordings();
+    final names = await _loadDisplayNames(recs);
+    final tasks = await _loadTasks();
     setState(() {
       _greeting = _logic.getGreeting();
       _recordings = recs;
+      _displayNames = names;
+      _tasks = tasks;
       _reminders = _logic.getInitialReminders();
     });
+  }
+
+  Future<List<Task>> _loadTasks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? tasksJson = prefs.getString('user_tasks');
+    if (tasksJson != null) {
+      final List<dynamic> decoded = jsonDecode(tasksJson);
+      return decoded.map((item) => Task.fromJson(item)).toList();
+    }
+    return [];
+  }
+
+  Future<Map<String, String>> _loadDisplayNames(List<FileSystemEntity> recs) async {
+    final Map<String, String> names = {};
+    final Directory appDocDir = await getApplicationDocumentsDirectory();
+    final Directory notesDir = Directory('${appDocDir.path}/notes');
+
+    if (await notesDir.exists()) {
+      for (var file in recs) {
+        final audioName = file.path.split('/').last.replaceAll('.m4a', '');
+        bool found = false;
+        
+        for (var subjectDir in notesDir.listSync()) {
+          if (subjectDir is Directory) {
+            final File noteFile = File('${subjectDir.path}/$audioName.json');
+            if (await noteFile.exists()) {
+              final String content = await noteFile.readAsString();
+              final Map<String, dynamic> data = jsonDecode(content);
+              names[file.path] = data['displayName'] ?? audioName;
+              found = true;
+              break;
+            }
+          }
+        }
+        if (!found) names[file.path] = audioName;
+      }
+    }
+    return names;
   }
 
   void _handlePlay(String path) {
@@ -74,6 +124,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  Future<void> _viewSummary(FileSystemEntity file) async {
+    try {
+      final Directory appDocDir = await getApplicationDocumentsDirectory();
+      final String audioName = file.path.split('/').last.replaceAll('.m4a', '');
+      
+      final Directory notesDir = Directory('${appDocDir.path}/notes');
+      if (await notesDir.exists()) {
+        for (var subjectDir in notesDir.listSync()) {
+          if (subjectDir is Directory) {
+            final File noteFile = File('${subjectDir.path}/$audioName.json');
+            if (await noteFile.exists()) {
+              final String content = await noteFile.readAsString();
+              final Map<String, dynamic> data = jsonDecode(content);
+              if (mounted) {
+                Navigator.push(context, MaterialPageRoute(builder: (c) => SmartNotesScreen(aiData: data)));
+              }
+              return;
+            }
+          }
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No smart notes found for this lecture.")));
+      }
+    } catch (e) {
+      debugPrint("Error loading notes: $e");
+    }
+  }
+
   void _addReminder(String title, String subject, DateTime date) {
     setState(() {
       _reminders.add(StudyReminder(title: title, subject: subject, date: date, type: "Quiz"));
@@ -86,8 +165,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
-    StudyReminder? upcoming = _reminders.isNotEmpty ? _reminders.first : null;
-    String daysLeft = upcoming != null ? upcoming.date.difference(DateTime.now()).inDays.toString() : "0";
+    
+    final List<Subject> userSubjects = ref.watch(subjectProvider);
+
+    // --- SYNCED UPCOMING TASK LOGIC ---
+    Task? nextQuiz = _tasks.where((t) => t.type == "Quiz" && !t.isCompleted).toList().fold<Task?>(null, (prev, curr) {
+      if (prev == null) return curr;
+      return curr.dueDate.isBefore(prev.dueDate) ? curr : prev;
+    });
 
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
@@ -99,34 +184,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Header
                 _buildHeader(isDarkMode),
                 SizedBox(height: 25.h),
-
-                // 2. Greeting
                 Text(_greeting, style: GoogleFonts.poppins(fontSize: 26.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black)),
                 Text("Lecture notes", style: GoogleFonts.poppins(fontSize: 14.sp, color: Colors.grey[500])),
                 SizedBox(height: 25.h),
-
-                // 3. Reminder Card
-                _buildReminderCard(upcoming, daysLeft),
+                _buildReminderCard(nextQuiz, isDarkMode),
                 SizedBox(height: 30.h),
 
-                // 4. Subjects
-                _buildSectionHeader("My Subjects", "See All", () => Navigator.push(context, MaterialPageRoute(builder: (c) => const SubjectsScreen()))),
+                _buildSectionHeader("My Subjects", "See All", isDarkMode, () => Navigator.push(context, MaterialPageRoute(builder: (c) => const SubjectsScreen()))),
                 SizedBox(height: 15.h),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(children: [
-                    _buildSubjectCard("Mathematics", "12 lectures", const Color(0xFF4A90E2), Icons.functions, isDarkMode),
-                    _buildSubjectCard("Physics", "8 lectures", const Color(0xFF9B51E0), Icons.science, isDarkMode),
-                    _buildSubjectCard("Literature", "15 lectures", const Color(0xFF27AE60), Icons.menu_book, isDarkMode),
-                  ]),
-                ),
+                userSubjects.isEmpty 
+                  ? Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(20.w),
+                      decoration: BoxDecoration(color: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100, borderRadius: BorderRadius.circular(15.r)),
+                      child: Text("No subjects yet. Tap 'See All' to add one!", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
+                    )
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(children: userSubjects.map((s) => _buildSubjectCard(s.name, s.desc, s.color, s.icon, isDarkMode)).toList()),
+                    ),
                 SizedBox(height: 30.h),
-
-                // 5. Recent Recordings
-                Text("Recent Lectures", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
+                Text("Recent Lectures", style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
                 SizedBox(height: 15.h),
                 _buildRecordingsList(isDarkMode),
               ],
@@ -137,8 +217,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // --- UI WIDGETS ---
-
   Widget _buildHeader(bool isDarkMode) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -148,29 +226,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SizedBox(width: 8.w),
           Text("NoteYou", style: GoogleFonts.poppins(fontSize: 20.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : const Color(0xFF0F172A))),
         ]),
-        Row(children: [Icon(Iconsax.search_normal, size: 24.sp), SizedBox(width: 15.w), Icon(Iconsax.notification, size: 24.sp)]),
+        Row(children: [Icon(Iconsax.search_normal, size: 24.sp, color: isDarkMode ? Colors.white : Colors.black87), SizedBox(width: 15.w), Icon(Iconsax.notification, size: 24.sp, color: isDarkMode ? Colors.white : Colors.black87)]),
       ],
     );
   }
 
-  Widget _buildReminderCard(StudyReminder? upcoming, String daysLeft) {
+  Widget _buildReminderCard(Task? nextQuiz, bool isDarkMode) {
+    String daysLeft = nextQuiz != null ? nextQuiz.dueDate.difference(DateTime.now()).inDays.toString() : "0";
+
     return Container(
       padding: EdgeInsets.all(20.w),
-      decoration: BoxDecoration(color: const Color(0xFF3F6DFC), borderRadius: BorderRadius.circular(20.r), boxShadow: [BoxShadow(color: const Color(0xFF3F6DFC).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))]),
+      decoration: BoxDecoration(color: const Color(0xFF3F6DFC), borderRadius: BorderRadius.circular(20.r), boxShadow: [BoxShadow(color: const Color(0xFF3F6DFC).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 5))]),
       child: Column(children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Row(children: [
-            Container(padding: EdgeInsets.all(10.w), decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12.r)), child: Icon(Iconsax.lamp_on, color: Colors.white, size: 24.sp)),
+            Container(padding: EdgeInsets.all(10.w), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12.r)), child: Icon(Iconsax.lamp_on, color: Colors.white, size: 24.sp)),
             SizedBox(width: 15.w),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(upcoming != null ? "Upcoming ${upcoming.type}" : "No Quiz", style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.white)),
-              Text(upcoming != null ? "${upcoming.title} in $daysLeft days" : "Add a reminder", style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.8))),
+              Text(nextQuiz != null ? "Upcoming ${nextQuiz.type}" : "No Upcoming Quizzes", style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text(nextQuiz != null ? "${nextQuiz.title} in $daysLeft days" : "You're all caught up!", style: TextStyle(fontSize: 12.sp, color: Colors.white.withValues(alpha: 0.8))),
             ]),
           ]),
-          GestureDetector(onTap: _showAddDialog, child: Container(padding: EdgeInsets.all(8.w), decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle), child: Icon(Icons.add, color: Colors.white, size: 20.sp)))
+          GestureDetector(onTap: () {}, child: Container(padding: EdgeInsets.all(8.w), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle), child: Icon(Icons.add, color: Colors.white, size: 20.sp)))
         ]),
         SizedBox(height: 20.h),
-        SizedBox(width: double.infinity, height: 45.h, child: ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const StudySessionScreen())), style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF3F6DFC), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))), child: Text(upcoming != null ? "Prepare Now" : "Start Session", style: const TextStyle(fontWeight: FontWeight.bold)))),
+        SizedBox(width: double.infinity, height: 45.h, child: ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const StudySessionScreen())), style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF3F6DFC), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))), child: Text(nextQuiz != null ? "Prepare for ${nextQuiz.subject}" : "Start Session", style: const TextStyle(fontWeight: FontWeight.bold)))),
       ]),
     );
   }
@@ -182,6 +262,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       itemBuilder: (context, index) {
         final file = _recordings[index];
         final isPlaying = _playingPath == file.path;
+        final displayName = _displayNames[file.path] ?? "Recording ${index + 1}";
+
         return Dismissible(
           key: Key(file.path),
           direction: DismissDirection.endToStart,
@@ -196,9 +278,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             margin: EdgeInsets.only(bottom: 10.h),
             decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(15.r), border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100)),
             child: ListTile(
-              leading: CircleAvatar(backgroundColor: isPlaying ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1), child: Icon(isPlaying ? Icons.pause : Iconsax.microphone, color: isPlaying ? Colors.red : const Color(0xFF3F6DFC), size: 20.sp)),
-              title: Text("Recording ${index + 1}", style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold)),
-              subtitle: Text("Audio Note", style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+              onTap: () => _viewSummary(file),
+              leading: CircleAvatar(backgroundColor: isPlaying ? Colors.red.withValues(alpha: 0.1) : Colors.blue.withValues(alpha: 0.1), child: Icon(isPlaying ? Icons.pause : Iconsax.book_1, color: isPlaying ? Colors.red : const Color(0xFF3F6DFC), size: 20.sp)),
+              title: Text(displayName, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text("Lecture Note", style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
               trailing: IconButton(icon: Icon(isPlaying ? Icons.stop_circle_outlined : Icons.play_circle_outline, color: isPlaying ? Colors.red : Colors.grey, size: 28.sp), onPressed: () => _handlePlay(file.path)),
             ),
           ),
@@ -226,6 +309,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
       child: Container(
         width: 140.w,
+        height: 160.h,
         margin: EdgeInsets.only(right: 15.w),
         padding: EdgeInsets.all(15.w),
         decoration: BoxDecoration(
@@ -235,23 +319,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
               padding: EdgeInsets.all(10.w),
               decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12.r)),
               child: Icon(icon, color: Colors.white, size: 24.sp),
             ),
-            SizedBox(height: 15.h),
-            Text(title, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
-            Text(sub, style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
+                SizedBox(height: 4.h),
+                Text(sub, style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title, String action, VoidCallback onTap) {
-    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)), GestureDetector(onTap: onTap, child: Text(action, style: TextStyle(fontSize: 14.sp, color: const Color(0xFF3F6DFC), fontWeight: FontWeight.bold)))]);
+  Widget _buildSectionHeader(String title, String action, bool isDarkMode, VoidCallback onTap) {
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)), GestureDetector(onTap: onTap, child: Text(action, style: TextStyle(fontSize: 14.sp, color: const Color(0xFF3F6DFC), fontWeight: FontWeight.bold)))]);
   }
 
   void _showAddDialog() {
